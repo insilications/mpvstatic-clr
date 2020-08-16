@@ -52,6 +52,7 @@ def main():
 
     c4che_lib_try = re.compile(r"^LIB_\w+")
     c4che_linkflags_try = re.compile(r"^LINKFLAGS_(ffmpeg|libavdevice)")
+    c4che_linkflags_try_name = re.compile(r"(?<=^LINKFLAGS_)(ffmpeg|libavdevice)")
     c4che_linkflags_filter = re.compile(r"/(usr|usr/[a-zA-Z0-9._+-\/]*)/(lib|lib64)/[a-zA-Z0-9._+-\/]*(\.a|_static\.a)")
     for key, values in c4che_vars.items():
         if re.search(c4che_lib_try, key):
@@ -61,11 +62,16 @@ def main():
                 else:
                     print("{} = {}".format(key, values))
         if re.search(c4che_linkflags_try, key):
-            libs_list = []
+            stlibs_list = []
+            linkflags_list = []
             for entry in values:
                 if re.search(c4che_linkflags_filter, entry):
-                    libs_list.append(entry)
-            print("{} = {}\n".format(key, libs_list))
+                    stlibs_list.append(entry)
+                else:
+                    linkflags_list.append(entry)
+            new_key = re.search(c4che_linkflags_try_name, key).group(0)
+            print("STLIB_{} = {}\n".format(new_key, stlibs_list))
+            print("{} = {}\n".format(key, linkflags_list))
 
         # if isinstance(values, str):
         #    print("{} = '{}'".format(key, values))
