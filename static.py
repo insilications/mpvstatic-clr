@@ -5,7 +5,8 @@ import os
 import re
 import sys
 import importlib
-import build.c4che._cache as c4che
+
+# import build.c4che._cache as c4che
 from collections import defaultdict
 
 
@@ -30,27 +31,48 @@ def open_auto(*args, **kwargs):
 
 
 def get_vars_from_cache(module_name):
-    module = globals().get(module_name, None)
-    c_vars = defaultdict(list)
-    if module:
-        print("modulo")
-        c_vars = {key: module.__getattribute__(key) for key in dir(module) if not (key.startswith("__") or key.startswith("_"))}
-    else:
-        print("no modulo")
+    module = module_name
+    c_vars = {}
+    c_vars = {key: module.__getattribute__(key) for key in dir(module) if not (key.startswith("__") or key.startswith("_"))}
     return c_vars
 
 
 def main():
     # with open_auto("build/c4che/_cache.py", "r") as cache_vars:
-    # c4che = importlib.import_module("build.c4che._cache")
     # print ("tests: {}".format(c4che.LIB_gbm))
     # print([item for item in dir(c4che) if not (item.startswith("__") or item.startswith("_"))])
     # print([item for item in dir(c4che)])
     # print([v for v in dir(c4che) if v[:2] != "__"])
     # print("nome: {}".format("c4che"))
-    c4che_vars = get_vars_from_cache("c4che")
+    c4che = importlib.import_module("build.c4che._cache")
+    c4che_vars = {}
+    c4che_vars = get_vars_from_cache(c4che)
+    if os.path.exists("my_cache.py"):
+        os.remove("my_cache.py")
+
+    c4che_lib_try = re.compile(r"^LIB_\w+")
+    c4che_linkflags_try = re.compile(r"^LINKFLAGS_(ffmpeg|libavdevice)")
+    c4che_linkflags_filter = re.compile(r"/(usr|usr/[a-zA-Z0-9._+-\/]*)/(lib|lib64)/[a-zA-Z0-9._+-\/]*(\.a|_static\.a)")
     for key, values in c4che_vars.items():
-        print("{}: {}".format(key, values))
+        if re.search(c4che_lib_try, key):
+            if key != "LIB_ST":
+                if isinstance(values, str):
+                    print("{} = '{}'".format(key, values))
+                else:
+                    print("{} = {}".format(key, values))
+        if re.search(c4che_linkflags_try, key):
+            libs_list = []
+            for entry in values:
+                if re.search(c4che_linkflags_filter, entry):
+                    libs_list.append(entry)
+            print("{} = {}\n".format(key, libs_list))
+
+        # if isinstance(values, str):
+        #    print("{} = '{}'".format(key, values))
+        #    # write_out("my_cache.py", "{} = '{}'\n".format(key, values), "a")
+        # else:
+        #    print("{} = {}".format(key, values))
+        #    # write_out("my_cache.py", "{} = {}\n".format(key, values), "a")
 
 
 def test():
