@@ -4,6 +4,8 @@ import argparse
 import os
 import re
 import sys
+import importlib
+import build.c4che._cache as c4che
 from collections import defaultdict
 
 
@@ -27,8 +29,28 @@ def open_auto(*args, **kwargs):
     return open(*args, encoding="utf-8", errors="surrogateescape", **kwargs)
 
 
+def get_vars_from_cache(module_name):
+    module = globals().get(module_name, None)
+    c_vars = defaultdict(list)
+    if module:
+        print("modulo")
+        c_vars = {key: module.__getattribute__(key) for key in dir(module) if not (key.startswith("__") or key.startswith("_"))}
+    else:
+        print("no modulo")
+    return c_vars
+
+
 def main():
-    print("tests")
+    # with open_auto("build/c4che/_cache.py", "r") as cache_vars:
+    # c4che = importlib.import_module("build.c4che._cache")
+    # print ("tests: {}".format(c4che.LIB_gbm))
+    # print([item for item in dir(c4che) if not (item.startswith("__") or item.startswith("_"))])
+    # print([item for item in dir(c4che)])
+    # print([v for v in dir(c4che) if v[:2] != "__"])
+    # print("nome: {}".format("c4che"))
+    c4che_vars = get_vars_from_cache("c4che")
+    for key, values in c4che_vars.items():
+        print("{}: {}".format(key, values))
 
 
 def test():
