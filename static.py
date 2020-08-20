@@ -37,6 +37,92 @@ def get_vars_from_cache(module_name):
     return c_vars
 
 
+def find_lib_if_static(key, values, libs_dictt):
+    # libs_files_list = values.split()
+    libs_dict = defaultdict(list)
+    get_lib_name = re.compile(r"(?<=^LIB_)\w+")
+    lib_list_re_exclude_so = re.compile(r"(c\b|GL\b|gomp\b|pthread\b|stdc\+\+\B|gcc_s\b|gcc\b|rt\b|dl\b|m\b)")
+    for lib in values:
+        lib_file_re_s = "lib{}".format(lib)
+        lib_file_re = re.escape(lib_file_re_s)
+        compile_usr_re = r"/(usr|usr/[a-zA-Z0-9._+-\/]*)/(lib|lib64)/[a-zA-Z0-9._+-\/]*{}(\.a|_static\.a)$".format(lib_file_re)
+        usr_re = re.compile(compile_usr_re)
+        lib_name = re.search(get_lib_name, key).group(0)
+        breakIt = False
+        if lib_list_re_exclude_so.match(lib):
+            key_name = "LIB_{}".format(lib_name)
+            libs_dict[key_name].append("{}".format(lib))
+            continue
+        for dirpath, dirnames, filenames in os.walk("/usr/lib64", followlinks=True):
+            if breakIt is False:
+                for filename in filenames:
+                    if breakIt is False:
+                        full_match = os.path.join(dirpath, filename)
+                        if usr_re.match(full_match):
+                            # print("Found usr_re 1: {}".format(full_match))
+                            key_name = "STLIB_{}".format(lib_name)
+                            # print("Found usr_re 1: {}".format(key_name))
+                            libs_dict[key_name].append("{}".format(full_match))
+                            breakIt = True
+                    else:
+                        break
+            else:
+                break
+        for dirpath, dirnames, filenames in os.walk("/usr/lib", followlinks=True):
+            if breakIt is False:
+                for filename in filenames:
+                    if breakIt is False:
+                        full_match = os.path.join(dirpath, filename)
+                        if usr_re.match(full_match):
+                            # print("Found usr_re 2: {}".format(full_match))
+                            key_name = "STLIB_{}".format(lib_name)
+                            # print("Found usr_re 2: {}".format(key_name))
+                            libs_dict[key_name].append("{}".format(full_match))
+                            breakIt = True
+                    else:
+                        break
+            else:
+                break
+        for dirpath, dirnames, filenames in os.walk("/usr/cuda", followlinks=True):
+            if breakIt is False:
+                for filename in filenames:
+                    if breakIt is False:
+                        full_match = os.path.join(dirpath, filename)
+                        if usr_re.match(full_match):
+                            # print("Found usr_re 3: {}".format(full_match))
+                            key_name = "STLIB_{}".format(lib_name)
+                            # print("Found usr_re 3: {}".format(key_name))
+                            libs_dict[key_name].append("{}".format(full_match))
+                            breakIt = True
+                    else:
+                        break
+            else:
+                break
+        for dirpath, dirnames, filenames in os.walk("/usr/nvidia", followlinks=True):
+            if breakIt is False:
+                for filename in filenames:
+                    if breakIt is False:
+                        full_match = os.path.join(dirpath, filename)
+                        if usr_re.match(full_match):
+                            # print("Found usr_re 4: {}".format(full_match))
+                            key_name = "STLIB_{}".format(lib_name)
+                            # print("Found usr_re 4: {}".format(key_name))
+                            libs_dict[key_name].append("{}".format(full_match))
+                            breakIt = True
+                    else:
+                        break
+            else:
+                break
+        # print_fatal("Not found {}: {}".format(rg_command, err))
+        if breakIt is False:
+            key_name = "LIB_{}".format(lib_name)
+            libs_dict[key_name].append("{}".format(lib))
+
+    for key, values in libs_dict.items():
+        print("{} = {}\n".format(key, values))
+        write_out("build/c4che/my_cache.py", "{} = {}\n".format(key, values), "a")
+
+
 def main():
     # with open_auto("build/c4che/_cache.py", "r") as cache_vars:
     # print ("tests: {}".format(c4che.LIB_gbm))
@@ -47,20 +133,24 @@ def main():
     c4che = importlib.import_module("build.c4che._cache")
     c4che_vars = {}
     c4che_vars = get_vars_from_cache(c4che)
-    if os.path.exists("my_cache.py"):
-        os.remove("my_cache.py")
+    if os.path.exists("build/c4che/my_cache.py"):
+        os.remove("build/c4che/my_cache.py")
 
+    libs_dict = defaultdict(list)
     c4che_lib_try = re.compile(r"^LIB_\w+")
     c4che_linkflags_try = re.compile(r"^LINKFLAGS_(ffmpeg|libavdevice)")
     c4che_linkflags_try_name = re.compile(r"(?<=^LINKFLAGS_)(ffmpeg|libavdevice)")
-    c4che_linkflags_filter = re.compile(r"/(usr|usr/[a-zA-Z0-9._+-\/]*)/(lib|lib64)/[a-zA-Z0-9._+-\/]*(\.a|_static\.a)")
+    c4che_linkflags_filter = re.compile(r"/(usr|usr/[a-zA-Z0-9._+-\/]*)/(lib|lib64)/[a-zA-Z0-9._+-\/]*(\.a|_static\.a)$")
     for key, values in c4che_vars.items():
         if re.search(c4che_lib_try, key):
             if key != "LIB_ST":
                 if isinstance(values, str):
-                    print("{} = '{}'".format(key, values))
+                    # print("{} = '{}'".format(key, values))
+                    print("Error {} {}".format(key, values))
                 else:
-                    print("{} = {}".format(key, values))
+                    # print("{} = {}".format(key, values))
+                    libs_dict = find_lib_if_static(key, values, libs_dict)
+                    continue
         if re.search(c4che_linkflags_try, key):
             stlibs_list = []
             linkflags_list = []
@@ -71,14 +161,17 @@ def main():
                     linkflags_list.append(entry)
             new_key = re.search(c4che_linkflags_try_name, key).group(0)
             print("STLIB_{} = {}\n".format(new_key, stlibs_list))
+            write_out("build/c4che/my_cache.py", "STLIB_{} = {}\n".format(new_key, stlibs_list), "a")
             print("{} = {}\n".format(key, linkflags_list))
+            write_out("build/c4che/my_cache.py", "{} = {}\n".format(key, linkflags_list), "a")
+            continue
 
-        # if isinstance(values, str):
-        #    print("{} = '{}'".format(key, values))
-        #    # write_out("my_cache.py", "{} = '{}'\n".format(key, values), "a")
-        # else:
-        #    print("{} = {}".format(key, values))
-        #    # write_out("my_cache.py", "{} = {}\n".format(key, values), "a")
+        if isinstance(values, str):
+            print("{} = '{}'".format(key, values))
+            write_out("build/c4che/my_cache.py", "{} = '{}'\n".format(key, values), "a")
+        else:
+            print("{} = {}".format(key, values))
+            write_out("build/c4che/my_cache.py", "{} = {}\n".format(key, values), "a")
 
 
 def test():
