@@ -53,6 +53,10 @@ def find_lib_if_static(key, values, libs_dictt):
             key_name = "LIB_{}".format(lib_name)
             libs_dict[key_name].append("{}".format(lib))
             continue
+        if lib_name == "shaderc_shared":
+            key_name = "STLIB_{}".format(lib_name)
+            libs_dict[key_name].append("{}".format("/usr/lib64/libshaderc_combined.a"))
+            continue
         for dirpath, dirnames, filenames in os.walk("/usr/lib64", followlinks=True):
             if breakIt is False:
                 for filename in filenames:
@@ -167,8 +171,15 @@ def main():
             continue
 
         if isinstance(values, str):
-            print("{} = '{}'".format(key, values))
-            write_out("build/c4che/my_cache.py", "{} = '{}'\n".format(key, values), "a")
+            if key == "STLIB_ST":
+                print("{} = '-Wl,-Bstatic %s'".format(key))
+                write_out("build/c4che/my_cache.py", "{} = '-Wl,-Bstatic %s'\n".format(key), "a")
+            elif key == "LIB_ST":
+                print("{} = '-Wl,-Bdynamic %s'".format(key))
+                write_out("build/c4che/my_cache.py", "{} = '-Wl,-Bdynamic %s'\n".format(key), "a")
+            else:
+                print("{} = '{}'".format(key, values))
+                write_out("build/c4che/my_cache.py", "{} = '{}'\n".format(key, values), "a")
         else:
             print("{} = {}".format(key, values))
             write_out("build/c4che/my_cache.py", "{} = {}\n".format(key, values), "a")
