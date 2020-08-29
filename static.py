@@ -40,7 +40,7 @@ def get_vars_from_cache(module_name):
 def find_lib_if_static(key, values, libs_dictt):
     # libs_files_list = values.split()
     libs_dict = defaultdict(list)
-    get_lib_name = re.compile(r"(?<=^LIB_)\w+")
+    get_lib_name = re.compile(r"(?<=^LIB_)\w+|(?<=^STLIB_)\w+")
     lib_list_re_exclude_so = re.compile(r"(c\b|GL\b|gomp\b|pthread\b|stdc\+\+\B|gcc_s\b|gcc\b|rt\b|dl\b|m\b)")
     for lib in values:
         lib_file_re_s = "lib{}".format(lib)
@@ -141,13 +141,13 @@ def main():
         os.remove("build/c4che/my_cache.py")
 
     libs_dict = defaultdict(list)
-    c4che_lib_try = re.compile(r"^LIB_\w+")
+    c4che_lib_try = re.compile(r"((^LIB_|^STLIB_)\w+)")
     c4che_linkflags_try = re.compile(r"^LINKFLAGS_(ffmpeg|libavdevice)")
     c4che_linkflags_try_name = re.compile(r"(?<=^LINKFLAGS_)(ffmpeg|libavdevice)")
     c4che_linkflags_filter = re.compile(r"/(usr|usr/[a-zA-Z0-9._+-\/]*)/(lib|lib64)/[a-zA-Z0-9._+-\/]*(\.a|_static\.a)$")
     for key, values in c4che_vars.items():
         if re.search(c4che_lib_try, key):
-            if key != "LIB_ST":
+            if key != "LIB_ST" and key != "STLIB_ST" and key != "STLIB_MARKER":
                 if isinstance(values, str):
                     # print("{} = '{}'".format(key, values))
                     print("Error {} {}".format(key, values))
@@ -175,8 +175,8 @@ def main():
                 print("{} = '-Wl,-Bstatic %s'".format(key))
                 write_out("build/c4che/my_cache.py", "{} = '-Wl,-Bstatic %s'\n".format(key), "a")
             elif key == "LIB_ST":
-                print("{} = '-Wl,-Bdynamic %s'".format(key))
-                write_out("build/c4che/my_cache.py", "{} = '-Wl,-Bdynamic %s'\n".format(key), "a")
+                print("{} = '-Wl,-Bdynamic -l%s'".format(key))
+                write_out("build/c4che/my_cache.py", "{} = '-Wl,-Bdynamic -l%s'\n".format(key), "a")
             else:
                 print("{} = '{}'".format(key, values))
                 write_out("build/c4che/my_cache.py", "{} = '{}'\n".format(key, values), "a")
