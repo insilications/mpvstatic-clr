@@ -36,7 +36,7 @@ def get_vars_from_cache(module_name):
     return c_vars
 
 
-def find_lib_if_static(key, values, ctx):
+def find_lib_if_static(key, values, with_ctx, ctx):
     # libs_files_list = values.split()
     libs_dict = defaultdict(list)
     get_lib_name = re.compile(r"(?<=^LIB_)\w+|(?<=^STLIB_)\w+")
@@ -136,7 +136,8 @@ def find_lib_if_static(key, values, ctx):
     for key, values in libs_dict.items():
         print("{} = {}\n".format(key, values))
         write_out("build/c4che/_cache.py", "{} = {}\n".format(key, values), "a")
-        # ctx.env[key] = values
+        if with_ctx is True:
+            ctx.env[key] = values
 
 
 def main():
@@ -173,9 +174,9 @@ def main():
                 else:
                     # print("{} = {}".format(key, values))
                     if with_ctx is True:
-                        find_lib_if_static(key, values, ctx)
+                        find_lib_if_static(key, values, with_ctx, ctx)
                     else:
-                        find_lib_if_static(key, values, None)
+                        find_lib_if_static(key, values, with_ctx, None)
                     continue
         """ if re.search(c4che_linkflags_try, key):
             # ctx.env[key] = []
